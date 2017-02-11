@@ -1,6 +1,6 @@
 package gui;
 
-import logic.Device;
+import javaspace.Device;
 
 public class DeviceGui extends javax.swing.tree.DefaultMutableTreeNode {
 		
@@ -12,4 +12,5 @@ public class DeviceGui extends javax.swing.tree.DefaultMutableTreeNode {
 	public DeviceGui(Device dev){
 		this.userObject = dev;
 	}
+	
 }

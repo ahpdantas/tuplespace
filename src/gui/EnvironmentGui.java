@@ -1,7 +1,7 @@
 package gui;
 
-import logic.Device;
-import logic.Environment;
+import javaspace.Device;
+import javaspace.Environment;
 
 
 public class EnvironmentGui extends javax.swing.tree.DefaultMutableTreeNode{
@@ -13,8 +13,6 @@ public class EnvironmentGui extends javax.swing.tree.DefaultMutableTreeNode{
 
 	public EnvironmentGui(Environment env){
 		this.userObject = env;
-		for( Device d: ((Environment) this.userObject).getDevices() ){
-			this.add(new DeviceGui(d));
-		}
+
 	}
 }

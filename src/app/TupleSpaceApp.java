@@ -57,9 +57,11 @@ import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
 import gui.DeviceGui;
-import gui.EnvironmentGui;
-import logic.Device;
-import logic.Environment;
+import javaspace.Device;
+import javaspace.Environment;
+import javaspace.JavaSpaceManager;
+import javaspace.Lookup;
+import net.jini.space.JavaSpace;
 
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
@@ -70,6 +72,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.util.ArrayList;
 
 public class TupleSpaceApp extends JPanel
                       implements TreeSelectionListener, MouseListener {
@@ -79,6 +82,7 @@ public class TupleSpaceApp extends JPanel
 	private static final long serialVersionUID = 1L;
 
 	private JTree tree;
+	private JavaSpaceManager manager;
  
     //Optionally play with line styles.  Possible values are
     //"Angled" (the default), "Horizontal", and "None".
@@ -89,11 +93,28 @@ public class TupleSpaceApp extends JPanel
     private static boolean useSystemLookAndFeel = false;
 
     public TupleSpaceApp() {
-        super(new GridLayout(1,0));
+    	super(new GridLayout(1,0));
+    	
+    	try {
+			System.out.println("Procurando pelo servico JavaSpace...");
+			Lookup finder = new Lookup(JavaSpace.class);
+			JavaSpace space = (JavaSpace) finder.getService();
+
+			if (space == null) {
+				System.out
+						.println("O servico JavaSpace nao foi encontrado. Encerrando...");
+				System.exit(-1);
+			}
+			this.manager = new JavaSpaceManager(space);
+			System.out.println("O servico JavaSpace foi encontrado.");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
         //Create the nodes.
-        DefaultMutableTreeNode top = new DefaultMutableTreeNode("Espaço de Tuplas");
-        createNodes(top);
+        DefaultMutableTreeNode top = new DefaultMutableTreeNode("House");
+        writeTuples();
+        readTuples(top);
 
         //Create a tree that allows one selection at a time.
         tree = new JTree(top);
@@ -121,6 +142,7 @@ public class TupleSpaceApp extends JPanel
  
         //Add the split pane to this panel.
         add(splitPane);
+
     }
 
     /** Required by TreeSelectionListener interface. */
@@ -129,38 +151,68 @@ public class TupleSpaceApp extends JPanel
                            tree.getLastSelectedPathComponent();
 
         if (node == null) return;
-
         Object nodeInfo = node.getUserObject();
         if (node.isLeaf()) {
-            Device device = (Device)nodeInfo;
+        	if( nodeInfo instanceof Device){
+        		Device device = (Device)nodeInfo;
+        	} else if( nodeInfo instanceof Environment ){
+        		Environment env = (Environment)nodeInfo;
+        	}
         } 
     }
 
-    private void createNodes(DefaultMutableTreeNode top) {
-        
-        DefaultMutableTreeNode book = null;
-        
-        Environment amb1 = new Environment("Amb1");
-        amb1.addDevice("dev1");
-        amb1.addDevice("dev2");
-        amb1.addDevice("dev3");
-        
-        top.add(new EnvironmentGui(amb1));
-        
-        Environment amb2 = new Environment("Amb2");
-        amb2.addDevice("dev1");
-        amb2.addDevice("dev2");
-        amb2.addDevice("dev3");
-        
-        top.add(new EnvironmentGui(amb2));
-
-     }
+    private void writeTuples() {
+		this.manager.createEnvironment("amb1");
+		this.manager.createEnvironment("amb2");
+		this.manager.createEnvironment("amb3");
+		this.manager.createEnvironment("amb4");
+		this.manager.createEnvironment("amb5");
+		this.manager.createEnvironment("amb6");
+		
+		this.manager.createDevice("dev1", "amb1");
+		this.manager.createDevice("dev2", "amb1");
+		this.manager.createDevice("dev3", "amb1");
+		
+		this.manager.createDevice("dev4", "amb2");
+		this.manager.createDevice("dev5", "amb2");
+		this.manager.createDevice("dev6", "amb2");
+		
+		this.manager.deleteEnvironment("amb1");
+		this.manager.deleteEnvironment("amb4");
+		this.manager.deleteEnvironment("amb6");
+		
+		this.manager.deleteDevice("dev2");
+		this.manager.deleteDevice("dev3");
+		this.manager.deleteDevice("dev1");
+		
+		this.manager.deleteEnvironment("amb1");
+   }
+    
+   private void readTuples(DefaultMutableTreeNode top){
+    
+	   ArrayList<String> environments = this.manager.listEnvironments();
+	   if( environments != null ){
+	    	for( String env : environments ){
+	    		DefaultMutableTreeNode node = new DefaultMutableTreeNode(env);
+	    		ArrayList<String> devices = this.manager.listDevices(env);
+	    		if( devices != null ){
+		    		for( String dev: devices){
+		    			System.out.println(dev);
+		    			node.add(new DefaultMutableTreeNode(dev));
+		    		}
+	    		}
+	    		top.add(node);
+	    	}
+	   }
+   }
+    
     /**
      * Create the GUI and show it.  For thread safety,
      * this method should be invoked from the
      * event dispatch thread.
      */
     private static void createAndShowGUI() {
+    	
         if (useSystemLookAndFeel) {
             try {
                 UIManager.setLookAndFeel(
@@ -182,17 +234,7 @@ public class TupleSpaceApp extends JPanel
         frame.setVisible(true);
     }
 
-    public static void main(String[] args) {
-        //Schedule a job for the event dispatch thread:
-        //creating and showing this application's GUI.
-        javax.swing.SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                createAndShowGUI();
-            }
-        });
-    }
-
-	@Override
+  	@Override
 	public void mouseClicked(MouseEvent e) {
 		// TODO Auto-generated method stub
 	    if (SwingUtilities.isRightMouseButton(e)) {
@@ -256,4 +298,17 @@ public class TupleSpaceApp extends JPanel
 		// TODO Auto-generated method stub
 		
 	}
+	
+	  public static void main(String[] args) {
+	        //Schedule a job for the event dispatch thread:
+	        //creating and showing this application's GUI.
+	        javax.swing.SwingUtilities.invokeLater(new Runnable() {
+	            public void run() {
+	                createAndShowGUI();
+	            }
+	        });
+	        
+	    }
+	
+	
 }
