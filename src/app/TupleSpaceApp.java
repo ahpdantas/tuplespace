@@ -184,8 +184,10 @@ public class TupleSpaceApp extends JPanel
 		this.manager.deleteDevice("dev2");
 		this.manager.deleteDevice("dev3");
 		this.manager.deleteDevice("dev1");
-		
 		this.manager.deleteEnvironment("amb1");
+		
+		this.manager.moveDevice("dev5","amb3");
+		
    }
     
    private void readTuples(DefaultMutableTreeNode top){

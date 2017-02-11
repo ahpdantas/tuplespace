@@ -5,9 +5,7 @@ import java.util.ArrayList;
 
 import net.jini.core.entry.UnusableEntryException;
 import net.jini.core.lease.Lease;
-import net.jini.core.transaction.Transaction;
 import net.jini.core.transaction.TransactionException;
-import net.jini.core.transaction.TransactionFactory;
 import net.jini.space.JavaSpace;
 
 public class JavaSpaceManager {
@@ -59,8 +57,7 @@ public class JavaSpaceManager {
     	
     	Device template = new Device();
     	template.env = envName;
-    	
-		try {
+    	try {
 			Device dev = (Device) this.space.readIfExists(template, null, 60*1000);
 			if( dev != null ){
 				System.out.println("Não é possível deletar um ambiente com dispositivos");
@@ -71,30 +68,34 @@ public class JavaSpaceManager {
 				envTemplate.name = envName;
 				Environment env = (Environment)this.space.takeIfExists(envTemplate,null,60*1000);
 				if( env != null ){
-					System.out.println(env.previous+":"+env.name+":"+env.next);
+					
+					System.out.println("Delete:"+env.previous+":"+env.name+":"+env.next);
 					if( env.previous.equals("null")){
+						System.out.println("Deletando primeiro ambiente da lista");
 						envTemplate = new Environment();
 						envTemplate.name = env.next;
 						Environment nextEnv = (Environment)this.space.takeIfExists(envTemplate,null,60*1000);
 						if( nextEnv != null ){
-							System.out.println(nextEnv.previous+":"+nextEnv.name+":"+nextEnv.next);
 							nextEnv.previous = "null";
 							this.space.write(nextEnv, null, 60*1000);
 						}
+
 					} else {
 						envTemplate = new Environment();
 						envTemplate.name = env.previous;
 						Environment previousEnv = (Environment)this.space.takeIfExists(envTemplate,null,60*1000);
 						if( previousEnv != null ){
 							if( env.next.equals("null")){
+								System.out.println("Deletando último ambiente da lista");
 								previousEnv.next = "null";
 							}else{
+								System.out.println("Deletando ambiente intermediário da lista");
 								previousEnv.next = env.next;
 							}
 							this.space.write(previousEnv, null, 60*1000);
 						}
 						
-											}
+					}
 				}else{
 					System.out.println("Ambiente não existe");
 				}
@@ -165,7 +166,6 @@ public class JavaSpaceManager {
     public void deleteDevice(String name){
     	Device template = new Device();
     	template.name = name;
-    	
     	try{
 	    	Device dev = (Device) this.space.readIfExists(template,null,60*1000);
 	    	if( dev != null ){
@@ -202,6 +202,33 @@ public class JavaSpaceManager {
 	    	
     	} catch (RemoteException | UnusableEntryException | TransactionException | InterruptedException e1) {
 			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+    }
+    
+    public void moveDevice(String devName, String envName ){
+    	System.out.println("Movendo dispositivo");
+  		try {
+			Environment template = new Environment();
+	    	template.name = envName;	
+			Environment env = (Environment) this.space.readIfExists(template, null, 60*1000);
+			if( env != null ){
+				Device devTemplate = new Device();
+				devTemplate.name = devName;
+				Device dev = (Device) this.space.readIfExists(devTemplate, null, 60*1000);
+				if( dev != null ){
+					System.out.println("Dispositivo existe. Movendo-o.");
+					deleteDevice(devName);
+					createDevice(devName, envName);
+				}
+				else{
+					System.out.println("Dispositivo não existe. Tente outro");
+				}
+			} else {
+				System.out.println("Ambiente destino não existe. Tente outro");
+			} 
+  		}catch (RemoteException | UnusableEntryException | TransactionException | InterruptedException e1) {
+  			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
     }
@@ -247,9 +274,10 @@ public class JavaSpaceManager {
     
     public ArrayList<String> listEnvironments(){
     	ArrayList<String> environments = null;
-    	Environment template = new Environment();
-    	template.previous = null;
+    	    	    	
     	try{
+    		Environment template = new Environment();
+        	template.previous = "null";
 			Environment env = (Environment)this.space.readIfExists(template, null, Lease.FOREVER);
 			if( env != null ){
 				System.out.println(env);
