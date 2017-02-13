@@ -30,6 +30,8 @@ package app;
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */ 
 
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
 /**
  * This application that requires the following additional files:
  *   TreeDemoHelp.html
@@ -43,6 +45,8 @@ package app;
  *    vm.html
  */
 import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
@@ -51,8 +55,10 @@ import javax.swing.JSplitPane;
 import javax.swing.UIManager;
 
 import javax.swing.JTree;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
@@ -61,28 +67,36 @@ import javaspace.Device;
 import javaspace.Environment;
 import javaspace.JavaSpaceManager;
 import javaspace.Lookup;
+import listeners.DeleteDeviceListener;
+import listeners.DeleteEnvironmentListener;
+import listeners.MoveDeviceListener;
+import listeners.NewDeviceListener;
+import listeners.NewEnvironmentListener;
+import listeners.RefreshListener;
 import net.jini.space.JavaSpace;
 
+import javax.swing.event.TreeModelEvent;
+import javax.swing.event.TreeModelListener;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
-
 import java.awt.Dimension;
-import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.util.ArrayList;
 
 public class TupleSpaceApp extends JPanel
-                      implements TreeSelectionListener, MouseListener {
+                      implements TreeSelectionListener, TreeModelListener, MouseListener {
     /**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
 
 	private JTree tree;
-	private JavaSpaceManager manager;
+	private DefaultMutableTreeNode top;
+	public JavaSpaceManager manager;
  
     //Optionally play with line styles.  Possible values are
     //"Angled" (the default), "Horizontal", and "None".
@@ -93,7 +107,7 @@ public class TupleSpaceApp extends JPanel
     private static boolean useSystemLookAndFeel = false;
 
     public TupleSpaceApp() {
-    	super(new GridLayout(1,0));
+    	this.setLayout(new BoxLayout(this,BoxLayout.Y_AXIS));
     	
     	try {
 			System.out.println("Procurando pelo servico JavaSpace...");
@@ -112,15 +126,17 @@ public class TupleSpaceApp extends JPanel
 		}
 
         //Create the nodes.
-        DefaultMutableTreeNode top = new DefaultMutableTreeNode("House");
-        writeTuples();
-        readTuples(top);
+        top = new DefaultMutableTreeNode("House");
+        
+        //writeTuples();
+        //readTuples(top);
 
         //Create a tree that allows one selection at a time.
         tree = new JTree(top);
+        
         tree.getSelectionModel().setSelectionMode
                 (TreeSelectionModel.SINGLE_TREE_SELECTION);
-
+        
         //Listen for when the selection changes.
         tree.addTreeSelectionListener(this);
         tree.addMouseListener(this);
@@ -139,9 +155,16 @@ public class TupleSpaceApp extends JPanel
  
         Dimension minimumSize = new Dimension(300, 300);
         treeView.setMinimumSize(minimumSize);
+        
  
         //Add the split pane to this panel.
         add(splitPane);
+        
+        JButton refresh = new JButton("Update");
+        refresh.addActionListener(new RefreshListener(this));
+        
+        
+        add(refresh);
 
     }
 
@@ -150,6 +173,8 @@ public class TupleSpaceApp extends JPanel
         DefaultMutableTreeNode node = (DefaultMutableTreeNode)
                            tree.getLastSelectedPathComponent();
 
+        System.out.println("Tree nodes changed");
+        
         if (node == null) return;
         Object nodeInfo = node.getUserObject();
         if (node.isLeaf()) {
@@ -190,11 +215,13 @@ public class TupleSpaceApp extends JPanel
 		
    }
     
-   private void readTuples(DefaultMutableTreeNode top){
-    
+   public void updateJavaSpace(){
+	   System.out.println("Atualizando árvore");
+	   top.removeAllChildren();
 	   ArrayList<String> environments = this.manager.listEnvironments();
 	   if( environments != null ){
 	    	for( String env : environments ){
+	    		System.out.println(env);
 	    		DefaultMutableTreeNode node = new DefaultMutableTreeNode(env);
 	    		ArrayList<String> devices = this.manager.listDevices(env);
 	    		if( devices != null ){
@@ -206,7 +233,75 @@ public class TupleSpaceApp extends JPanel
 	    		top.add(node);
 	    	}
 	   }
+	   
+	   DefaultTreeModel model = (DefaultTreeModel)tree.getModel();
+	   model.reload(top);
+	   
    }
+   
+   private static void createJMenuBar(JFrame frame, TupleSpaceApp app){
+		JMenuBar menuBar;
+		JMenu menu;
+		JMenuItem menuItem;
+
+		//Create the menu bar.
+		menuBar = new JMenuBar();
+
+		//Build the first menu.
+		menu = new JMenu("Environment");
+		menu.setMnemonic(KeyEvent.VK_G);
+		//menu.getAccessibleContext().setAccessibleDescription(
+	//	        "The only menu in this program that has menu items");
+		menuBar.add(menu);
+
+		//a group of JMenuItems
+		menuItem = new JMenuItem("New",KeyEvent.VK_N);
+		menuItem.setAccelerator(KeyStroke.getKeyStroke(
+		        KeyEvent.VK_N, ActionEvent.ALT_MASK));
+		menuItem.getAccessibleContext().setAccessibleDescription("Create a new environment");
+		menuItem.addActionListener(new NewEnvironmentListener(app)); 
+		menu.add(menuItem);
+		
+		menuItem = new JMenuItem("Delete",KeyEvent.VK_N);
+		menuItem.setAccelerator(KeyStroke.getKeyStroke(
+		        KeyEvent.VK_N, ActionEvent.ALT_MASK));
+		menuItem.getAccessibleContext().setAccessibleDescription("Delete environment");
+		menuItem.addActionListener(new DeleteEnvironmentListener(app));  
+		menu.add(menuItem);
+		
+		menu.addSeparator();
+		
+		//Build second menu in the menu bar.
+		menu = new JMenu("Device");
+		menu.setMnemonic(KeyEvent.VK_O);
+		menu.getAccessibleContext().setAccessibleDescription("Device menu");
+		
+		menuItem = new JMenuItem("New",KeyEvent.VK_N);
+		menuItem.setAccelerator(KeyStroke.getKeyStroke(
+		        KeyEvent.VK_N, ActionEvent.ALT_MASK));
+		menuItem.getAccessibleContext().setAccessibleDescription("Create a new device");
+		menuItem.addActionListener(new NewDeviceListener(app));  
+		menu.add(menuItem);
+		
+		menuItem = new JMenuItem("Delete",KeyEvent.VK_N);
+		menuItem.setAccelerator(KeyStroke.getKeyStroke(
+		        KeyEvent.VK_N, ActionEvent.ALT_MASK));
+		menuItem.getAccessibleContext().setAccessibleDescription("Delete device");
+		menuItem.addActionListener(new DeleteDeviceListener(app));  
+		menu.add(menuItem);
+		
+		menuItem = new JMenuItem("Move",KeyEvent.VK_N);
+		menuItem.setAccelerator(KeyStroke.getKeyStroke(
+		        KeyEvent.VK_N, ActionEvent.ALT_MASK));
+		menuItem.getAccessibleContext().setAccessibleDescription("Move device");
+		menuItem.addActionListener(new MoveDeviceListener(app)); 
+		menu.add(menuItem);
+		
+		menuBar.add(menu);
+		frame.setJMenuBar(menuBar);
+		
+	}
+
     
     /**
      * Create the GUI and show it.  For thread safety,
@@ -214,6 +309,7 @@ public class TupleSpaceApp extends JPanel
      * event dispatch thread.
      */
     private static void createAndShowGUI() {
+    	TupleSpaceApp app = new TupleSpaceApp();
     	
         if (useSystemLookAndFeel) {
             try {
@@ -229,8 +325,10 @@ public class TupleSpaceApp extends JPanel
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         //Add content to the window.
-        frame.add(new TupleSpaceApp());
-
+        frame.add(app);
+        createJMenuBar(frame, app);
+        
+	    frame.setSize(100, 100);
         //Display the window.
         frame.pack();
         frame.setVisible(true);
@@ -301,6 +399,33 @@ public class TupleSpaceApp extends JPanel
 		
 	}
 	
+	@Override
+	public void treeNodesChanged(TreeModelEvent e) {
+		// TODO Auto-generated method stub
+		System.out.println("Tree nodes changed 2");
+		
+	}
+
+	@Override
+	public void treeNodesInserted(TreeModelEvent e) {
+		// TODO Auto-generated method stub
+		System.out.println("Tree nodes inserted");
+	}
+
+	@Override
+	public void treeNodesRemoved(TreeModelEvent e) {
+		// TODO Auto-generated method stub
+		System.out.println("Tree nodes removed");
+		
+	}
+
+	@Override
+	public void treeStructureChanged(TreeModelEvent e) {
+		// TODO Auto-generated method stub
+		System.out.println("Tree structure changed");
+	}
+
+	
 	  public static void main(String[] args) {
 	        //Schedule a job for the event dispatch thread:
 	        //creating and showing this application's GUI.
@@ -311,6 +436,5 @@ public class TupleSpaceApp extends JPanel
 	        });
 	        
 	    }
-	
 	
 }
