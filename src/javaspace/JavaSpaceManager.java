@@ -3,6 +3,8 @@ package javaspace;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 
+import javax.swing.JOptionPane;
+
 import net.jini.core.entry.UnusableEntryException;
 import net.jini.core.lease.Lease;
 import net.jini.core.transaction.TransactionException;
@@ -21,10 +23,11 @@ public class JavaSpaceManager {
   		try {
 			Environment template = new Environment();
 	    	template.name = name;	
-			Environment env = (Environment) this.space.readIfExists(template, null, 60*1000);
+			Environment env = (Environment) this.space.readIfExists(template, null, Lease.FOREVER);
 		
 			if( env != null ){
 				System.out.println("Ambiente já existe. Tente outro");
+				JOptionPane.showMessageDialog(null,"Environment already exists. Try another one.","Error",JOptionPane.WARNING_MESSAGE);
 			} else {
 				System.out.println("Criando um novo ambiente");
 				env = new Environment();
@@ -34,16 +37,16 @@ public class JavaSpaceManager {
 				
 				template = new Environment();
 				template.next = "null";
-				Environment lastEnv = (Environment) this.space.takeIfExists(template, null, 60*1000);
+				Environment lastEnv = (Environment) this.space.takeIfExists(template, null, Lease.FOREVER);
 				if( lastEnv != null ){
 					lastEnv.next = env.name;  
 					env.previous = lastEnv.name;
-					this.space.write(lastEnv, null, 60*1000);
+					this.space.write(lastEnv, null, Lease.FOREVER);
 				} else {
 					System.out.println("Inserindo primeiro ambiente");
 				}
 				
-				this.space.write(env, null, 60 * 1000);
+				this.space.write(env, null, Lease.FOREVER);
 				System.out.println("Ambiente:"+env.name+":"+env.next);
 				
 			}
@@ -58,15 +61,16 @@ public class JavaSpaceManager {
     	Device template = new Device();
     	template.env = envName;
     	try {
-			Device dev = (Device) this.space.readIfExists(template, null, 60*1000);
+			Device dev = (Device) this.space.readIfExists(template, null, Lease.FOREVER);
 			if( dev != null ){
 				System.out.println("Não é possível deletar um ambiente com dispositivos");
+				JOptionPane.showMessageDialog(null,"It's not possible delete an environment with devices.","Error",JOptionPane.WARNING_MESSAGE);
 			}
 			else{
 				System.out.println("Ambiente sem dispositivos");
 				Environment envTemplate = new Environment();
 				envTemplate.name = envName;
-				Environment env = (Environment)this.space.takeIfExists(envTemplate,null,60*1000);
+				Environment env = (Environment)this.space.takeIfExists(envTemplate,null,Lease.FOREVER);
 				if( env != null ){
 					
 					System.out.println("Delete:"+env.previous+":"+env.name+":"+env.next);
@@ -74,16 +78,16 @@ public class JavaSpaceManager {
 						System.out.println("Deletando primeiro ambiente da lista");
 						envTemplate = new Environment();
 						envTemplate.name = env.next;
-						Environment nextEnv = (Environment)this.space.takeIfExists(envTemplate,null,60*1000);
+						Environment nextEnv = (Environment)this.space.takeIfExists(envTemplate,null,Lease.FOREVER);
 						if( nextEnv != null ){
 							nextEnv.previous = "null";
-							this.space.write(nextEnv, null, 60*1000);
+							this.space.write(nextEnv, null, Lease.FOREVER);
 						}
 
 					} else {
 						envTemplate = new Environment();
 						envTemplate.name = env.previous;
-						Environment previousEnv = (Environment)this.space.takeIfExists(envTemplate,null,60*1000);
+						Environment previousEnv = (Environment)this.space.takeIfExists(envTemplate,null,Lease.FOREVER);
 						if( previousEnv != null ){
 							if( env.next.equals("null")){
 								System.out.println("Deletando último ambiente da lista");
@@ -92,12 +96,13 @@ public class JavaSpaceManager {
 								System.out.println("Deletando ambiente intermediário da lista");
 								previousEnv.next = env.next;
 							}
-							this.space.write(previousEnv, null, 60*1000);
+							this.space.write(previousEnv, null, Lease.FOREVER);
 						}
 						
 					}
 				}else{
 					System.out.println("Ambiente não existe");
+					JOptionPane.showMessageDialog(null,"Environment does not exist.","Error",JOptionPane.WARNING_MESSAGE);
 				}
 			}
 		
@@ -114,16 +119,17 @@ public class JavaSpaceManager {
         	Environment template = new Environment();
         	template.name = envName;
         	
-			Environment env = (Environment)this.space.readIfExists(template, null, 60*1000);
+			Environment env = (Environment)this.space.readIfExists(template, null, Lease.FOREVER);
 			if( env != null ){
 				System.out.println("Ambiente existe!!!!");
 				
 				Device devTemplate = new Device();
 				devTemplate.name = name;
 				devTemplate.env = envName;
-				Device dev = (Device) this.space.readIfExists(devTemplate,null,60*1000);
+				Device dev = (Device) this.space.readIfExists(devTemplate,null,Lease.FOREVER);
 		    	if( dev != null ){
 		    		System.out.println("Dispositivo já existe no ambiente");
+		    		JOptionPane.showMessageDialog(null,"Device already exists. Try another one.","Error",JOptionPane.WARNING_MESSAGE);
 		    	} else {
 		    		System.out.println("Dispositivo não existe no ambiente");
 		    		dev = new Device();
@@ -134,24 +140,25 @@ public class JavaSpaceManager {
 	    			devTemplate = new Device();
 	    			devTemplate.next = "null";
 	    			devTemplate.env = envName;
-	    			Device lastDev = (Device) this.space.takeIfExists(devTemplate,null,60*1000);
+	    			Device lastDev = (Device) this.space.takeIfExists(devTemplate,null,Lease.FOREVER);
 	    			if( lastDev != null ){
 	    				System.out.println("Existe um dispositivo no ambiente");
 	    				lastDev.next = dev.name;
 	    				dev.previous = lastDev.name;
 	    				System.out.println(lastDev.previous+":"+lastDev.name+":"+lastDev.next+":"+lastDev.env);
-	    				this.space.write(lastDev, null, 60 * 1000);
+	    				this.space.write(lastDev, null, Lease.FOREVER);
 	    			} else {
 	    				System.out.println("Ambiente vazio");
 	    				dev.previous = "null";
 	    			}
 	    			System.out.println("Salvando dispositivo");
-	    			this.space.write(dev,null, 60*1000);
+	    			this.space.write(dev,null, Lease.FOREVER);
 		    	}
 
 			}
 			else{
 				System.out.println("Ambiente não existe!!!!");
+				JOptionPane.showMessageDialog(null,"Environment does not exist. Try to create the environment first.","Error",JOptionPane.WARNING_MESSAGE);
 			}
 			
 			
@@ -167,7 +174,7 @@ public class JavaSpaceManager {
     	Device template = new Device();
     	template.name = name;
     	try{
-	    	Device dev = (Device) this.space.readIfExists(template,null,60*1000);
+	    	Device dev = (Device) this.space.readIfExists(template,null,Lease.FOREVER);
 	    	if( dev != null ){
 	    		System.out.println(dev.previous+":"+dev.name+":"+dev.next+":"+dev.env);
 	    		if( dev.previous != null ){
@@ -175,29 +182,30 @@ public class JavaSpaceManager {
 	    			template = new Device();
 	    			template.name = dev.previous;
 	    			
-	    			Device previousDev = (Device) this.space.takeIfExists(template,null,60*1000);
+	    			Device previousDev = (Device) this.space.takeIfExists(template,null,Lease.FOREVER);
 	    			if( previousDev != null ){
 	    				if( dev.next.equals("null")){
 	    					previousDev.next = "null";
 	    				} else {
 	    					previousDev.next = dev.next;
 	    				}
-	    				this.space.write(previousDev, null, 60*1000);
+	    				this.space.write(previousDev, null, Lease.FOREVER);
 	    				System.out.println(previousDev.previous+":"+previousDev.name+":"+previousDev.next+":"+previousDev.env);
 	    				
 	    			} else {
 	    				template = new Device();
 		    			template.name = dev.next;
-		    			Device nextDev = (Device) this.space.takeIfExists(template,null,60*1000);
+		    			Device nextDev = (Device) this.space.takeIfExists(template,null,Lease.FOREVER);
 		    			if( nextDev != null ){
 		    				nextDev.previous = "null";
-		    				this.space.write(nextDev, null, 60*1000);
+		    				this.space.write(nextDev, null, Lease.FOREVER);
 		    			}
 	    			}
-	    			this.space.take(dev, null, 60*1000);
+	    			this.space.take(dev, null, Lease.FOREVER);
 	    		}
 	    	} else {
 	    		System.out.println("Device not found");
+	    		JOptionPane.showMessageDialog(null,"Device not found. Try another one.","Error",JOptionPane.WARNING_MESSAGE);
 	    	}
 	    	
     	} catch (RemoteException | UnusableEntryException | TransactionException | InterruptedException e1) {
@@ -211,21 +219,23 @@ public class JavaSpaceManager {
   		try {
 			Environment template = new Environment();
 	    	template.name = envName;	
-			Environment env = (Environment) this.space.readIfExists(template, null, 60*1000);
+			Environment env = (Environment) this.space.readIfExists(template, null, Lease.FOREVER);
 			if( env != null ){
 				Device devTemplate = new Device();
 				devTemplate.name = devName;
-				Device dev = (Device) this.space.readIfExists(devTemplate, null, 60*1000);
+				Device dev = (Device) this.space.readIfExists(devTemplate, null, Lease.FOREVER);
 				if( dev != null ){
 					System.out.println("Dispositivo existe. Movendo-o.");
 					deleteDevice(devName);
 					createDevice(devName, envName);
 				}
 				else{
+					JOptionPane.showMessageDialog(null,"Device does not exist. Try another one.","Error",JOptionPane.WARNING_MESSAGE);
 					System.out.println("Dispositivo não existe. Tente outro");
 				}
 			} else {
 				System.out.println("Ambiente destino não existe. Tente outro");
+				JOptionPane.showMessageDialog(null,"Destiny environment does not exist. Try another one.","Error",JOptionPane.WARNING_MESSAGE);
 			} 
   		}catch (RemoteException | UnusableEntryException | TransactionException | InterruptedException e1) {
   			// TODO Auto-generated catch block
@@ -242,14 +252,14 @@ public class JavaSpaceManager {
         	template.name = null;
         	template.next = null;
         	template.previous = "null";
-			Device dev = (Device)this.space.readIfExists(template, null, 60*1000);
+			Device dev = (Device)this.space.readIfExists(template, null, Lease.FOREVER);
 			if( dev != null ){
 				devices = new ArrayList<String>();
 				devices.add(dev.name);
 				while( true ){
 					template = new Device();
 					template.name = dev.next;
-					dev = (Device)this.space.readIfExists(template, null, 60*1000);
+					dev = (Device)this.space.readIfExists(template, null, Lease.FOREVER);
 					if( dev != null ){
 						devices.add(dev.name);
 						if( dev.next.equals("null")){
